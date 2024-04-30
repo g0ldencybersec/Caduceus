@@ -4,34 +4,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"sync"
 
 	"github.com/g0ldencybersec/Caduceus/pkg/types"
 	"github.com/g0ldencybersec/Caduceus/pkg/utils"
 )
 
 // Worker Types
-type worker struct {
+type Worker struct {
 	dialer  *net.Dialer
 	input   <-chan string
 	results chan<- types.Result
 }
 
 type WorkerPool struct {
-	workers []*worker
+	workers []*Worker
 	input   chan string
 	results chan types.Result
 	dialer  *net.Dialer
+	wg      sync.WaitGroup
 }
 
-func NewWorker(dialer *net.Dialer, input <-chan string, results chan<- types.Result) *worker {
-	return &worker{
+func NewWorker(dialer *net.Dialer, input <-chan string, results chan<- types.Result) *Worker {
+	return &Worker{
 		dialer:  dialer,
 		input:   input,
 		results: results,
 	}
 }
 
-func (w *worker) run() {
+func (w *Worker) run() {
 	for ip := range w.input {
 		cert, err := utils.GetSSLCert(ip, w.dialer)
 		if err != nil {
@@ -63,10 +65,11 @@ func (w *worker) run() {
 
 func NewWorkerPool(size int, dialer *net.Dialer, input chan string, results chan types.Result) *WorkerPool {
 	wp := &WorkerPool{
-		workers: make([]*worker, size),
+		workers: make([]*Worker, size),
 		input:   input,
 		results: results,
 		dialer:  dialer,
+		wg:      sync.WaitGroup{},
 	}
 	for i := range wp.workers {
 		wp.workers[i] = NewWorker(wp.dialer, wp.input, wp.results)
@@ -76,34 +79,46 @@ func NewWorkerPool(size int, dialer *net.Dialer, input chan string, results chan
 
 func (wp *WorkerPool) Start() {
 	for _, worker := range wp.workers {
-		go worker.run()
+		wp.wg.Add(1) // Properly adding to the waitgroup before the goroutine
+		go func(w *Worker) {
+			defer wp.wg.Done()
+			w.run()
+		}(worker) // Correctly passing the loop variable as a parameter
 	}
 }
 
 func (wp *WorkerPool) Stop() {
-	close(wp.input)
+	// Wait for all workers to finish their tasks.
+	// This blocks until all workers have called wg.Done(),
+	// signaling that they have completed.
+	wp.wg.Wait()
+
+	// Optionally, if the WorkerPool also manages the results channel, close it:
+	// Make sure no more writes to the results channel are expected by this point.
+	close(wp.results)
 }
 
 // Result Workers
-type ResultWorker struct {
+type ResultsWorker struct {
 	resultInput   <-chan types.Result
 	outputChannel chan<- string
 }
 
-type ResultWorkerPool struct {
-	workers       []*ResultWorker
-	resultInput   chan types.Result
+type ResultsWorkerPool struct {
+	workers       []*ResultsWorker
+	resultInput   chan types.Result // Note: This channel is closed by WorkerPool
 	outputChannel chan string
+	wg            sync.WaitGroup
 }
 
-func NewResultWorker(resultInput <-chan types.Result, outputChannel chan<- string) *ResultWorker {
-	return &ResultWorker{
+func NewResultsWorker(resultInput <-chan types.Result, outputChannel chan<- string) *ResultsWorker {
+	return &ResultsWorker{
 		resultInput:   resultInput,
 		outputChannel: outputChannel,
 	}
 }
 
-func (rw *ResultWorker) Run(args types.ScrapeArgs) {
+func (rw *ResultsWorker) Run(args types.ScrapeArgs) {
 	for result := range rw.resultInput {
 		if result.Hit {
 			if args.JsonOutput {
@@ -133,24 +148,33 @@ func (rw *ResultWorker) Run(args types.ScrapeArgs) {
 	}
 }
 
-func NewResultWorkerPool(size int, resultInput chan types.Result, outputChannel chan string) *ResultWorkerPool {
-	rwp := &ResultWorkerPool{
-		workers:       make([]*ResultWorker, size),
+func NewResultWorkerPool(size int, resultInput chan types.Result, outputChannel chan string) *ResultsWorkerPool {
+	rwp := &ResultsWorkerPool{
+		workers:       make([]*ResultsWorker, size),
 		resultInput:   resultInput,
 		outputChannel: outputChannel,
+		wg:            sync.WaitGroup{},
 	}
 	for i := range rwp.workers {
-		rwp.workers[i] = NewResultWorker(rwp.resultInput, rwp.outputChannel)
+		rwp.workers[i] = NewResultsWorker(rwp.resultInput, rwp.outputChannel)
 	}
 	return rwp
 }
 
-func (rwp *ResultWorkerPool) Start(args types.ScrapeArgs) {
+func (rwp *ResultsWorkerPool) Start(args types.ScrapeArgs) {
 	for _, worker := range rwp.workers {
-		go worker.Run(args)
+		rwp.wg.Add(1)
+		go func(rw *ResultsWorker) {
+			defer rwp.wg.Done()
+			rw.Run(args)
+		}(worker)
 	}
 }
 
-func (rwp *ResultWorkerPool) Stop() {
-	close(rwp.resultInput)
+func (rwp *ResultsWorkerPool) Stop() {
+	// Wait for all results workers to finish their tasks
+	rwp.wg.Wait()
+
+	// Since the output channel might be managed here, consider closing it if appropriate
+	close(rwp.outputChannel)
 }

@@ -3,7 +3,6 @@ package scrape
 import (
 	"fmt"
 	"net"
-	"sync"
 
 	"time"
 
@@ -13,8 +12,6 @@ import (
 )
 
 func RunScrape(args types.ScrapeArgs) {
-	var wg sync.WaitGroup
-
 	dialer := &net.Dialer{
 		Timeout: time.Duration(args.Timeout) * time.Second,
 	}
@@ -23,18 +20,18 @@ func RunScrape(args types.ScrapeArgs) {
 	resultChannel := make(chan types.Result)
 	outputChannel := make(chan string, 1000)
 
+	// Create and start the worker pool
 	workerPool := workers.NewWorkerPool(args.Concurrency, dialer, inputChannel, resultChannel)
-	resultWorkerPool := workers.NewResultWorkerPool(10, resultChannel, outputChannel)
-
-	// Start worker pools
 	workerPool.Start()
-	resultWorkerPool.Start(args)
+
+	// Create and start the results worker pool
+	resultsWorkerPool := workers.NewResultWorkerPool(50, resultChannel, outputChannel) // Adjust the size as needed
+	resultsWorkerPool.Start(args)
 
 	// Handle input feeding
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		utils.IntakeFunction(inputChannel, args.Ports, args.Input)
+		close(inputChannel)
 	}()
 
 	// Handle outputs
@@ -44,16 +41,10 @@ func RunScrape(args types.ScrapeArgs) {
 		}
 	}()
 
-	// Wait for all inputs to be processed before closing inputChannel
-	wg.Wait()
-	close(inputChannel)
-	workerPool.Stop() // Wait internally for all workers to finish before closing resultChannel
-	close(resultChannel)
-	resultWorkerPool.Stop() // Wait internally for all result workers to finish before closing outputChannel
-	close(outputChannel)
+	workerPool.Stop()
+	resultsWorkerPool.Stop()
 
 	// if args.PrintStats {
 	// 	stats.Display() // Display updated stats
 	// }
-
 }
