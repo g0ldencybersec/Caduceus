@@ -1,66 +1,59 @@
 package scrape
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
 	"net"
-	"os"
+	"sync"
 
 	"time"
 
-	"github.com/g0ldencybersec/Caduceus/pkg/stats"
 	"github.com/g0ldencybersec/Caduceus/pkg/types"
 	"github.com/g0ldencybersec/Caduceus/pkg/utils"
 	"github.com/g0ldencybersec/Caduceus/pkg/workers"
 )
 
 func RunScrape(args types.ScrapeArgs) {
+	var wg sync.WaitGroup
+
 	dialer := &net.Dialer{
 		Timeout: time.Duration(args.Timeout) * time.Second,
 	}
 
 	inputChannel := make(chan string)
 	resultChannel := make(chan types.Result)
-
-	stats := &stats.Stats{}
+	outputChannel := make(chan string, 1000)
 
 	workerPool := workers.NewWorkerPool(args.Concurrency, dialer, inputChannel, resultChannel)
+	resultWorkerPool := workers.NewResultWorkerPool(10, resultChannel, outputChannel)
+
+	// Start worker pools
 	workerPool.Start()
+	resultWorkerPool.Start(args)
 
-	go utils.IntakeFunction(inputChannel, args.Ports, args.Input)
-
-	defer func() {
-		workerPool.Stop()
-		close(resultChannel)
+	// Handle input feeding
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		utils.IntakeFunction(inputChannel, args.Ports, args.Input)
 	}()
 
-	file, err := os.Create(args.OutputFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create output file: %v\n", err)
-		return
-	}
-	defer file.Close()
-	writer := bufio.NewWriter(file)
-	defer writer.Flush()
-
-	for result := range resultChannel {
-
-		stats.Update(result)
-		stats.Display() // Display updated stats
-
-		if result.Hit {
-			outputJSON, _ := json.Marshal(result.Certificate)
-			writer.Write(outputJSON)
-			writer.WriteString("\n")
-		} else if args.Debug {
-			if result.Timeout {
-				fmt.Printf("Timed Out. No SSL certificate found for %s\n", result.IP)
-			}
-			if result.Error != nil {
-				fmt.Printf("Failed to get SSL certificate from %s: %v\n", result.IP, result.Error)
-			}
+	// Handle outputs
+	go func() {
+		for output := range outputChannel {
+			fmt.Println(output)
 		}
-	}
+	}()
+
+	// Wait for all inputs to be processed before closing inputChannel
+	wg.Wait()
+	close(inputChannel)
+	workerPool.Stop() // Wait internally for all workers to finish before closing resultChannel
+	close(resultChannel)
+	resultWorkerPool.Stop() // Wait internally for all result workers to finish before closing outputChannel
+	close(outputChannel)
+
+	// if args.PrintStats {
+	// 	stats.Display() // Display updated stats
+	// }
 
 }

@@ -3,6 +3,7 @@ package stats
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/g0ldencybersec/Caduceus/pkg/types"
 )
@@ -11,6 +12,7 @@ type Stats struct {
 	hits   int64
 	misses int64
 	total  int64
+	mu     sync.Mutex
 }
 
 func (s *Stats) HitPercentage() float64 {
@@ -21,6 +23,8 @@ func (s *Stats) HitPercentage() float64 {
 }
 
 func (s *Stats) Update(result types.Result) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.total++
 	if result.Hit {
 		s.hits++

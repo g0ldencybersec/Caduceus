@@ -19,8 +19,10 @@ func main() {
 	flag.IntVar(&args.Timeout, "t", 4, "Timeout for TLS handshake")
 	flag.StringVar(&args.Input, "i", "NONE", "Either IPs & CIDRs separated by commas, or a file with IPs/CIDRs on each line")
 	flag.BoolVar(&args.Debug, "debug", false, "Add this flag if you want to see failures/timeouts")
-	flag.StringVar(&args.OutputFile, "o", "CaduceusResults.jsonl", "Output file to write results to")
 	flag.BoolVar(&args.Help, "h", false, "Show the program usage message")
+	flag.BoolVar(&args.JsonOutput, "j", false, "print cert data as jsonl")
+	flag.BoolVar(&args.PrintWildcards, "wc", false, "print wildcards to stdout")
+	//flag.BoolVar(&args.Help, "stats", false, "Print stats at the end")
 
 	flag.Parse()
 

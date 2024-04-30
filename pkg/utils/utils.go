@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"strings"
 )
+
+var domainRegex = regexp.MustCompile(`^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
 
 func GetSSLCert(ip string, dialer *net.Dialer) (*x509.Certificate, error) {
 	conn, err := tls.DialWithDialer(dialer, "tcp", ip, &tls.Config{
@@ -120,4 +123,13 @@ func JoinNonEmpty(sep string, elements []string) string {
 		}
 	}
 	return result
+}
+
+func IsValidDomain(domain string) bool {
+	return domainRegex.MatchString(domain)
+}
+
+func IsWilcard(domain string) bool {
+	replaced := strings.Replace(domain, "*.", "", -1)
+	return (strings.Contains(domain, "*") && IsValidDomain(replaced))
 }

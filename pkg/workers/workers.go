@@ -1,6 +1,8 @@
 package workers
 
 import (
+	"encoding/json"
+	"fmt"
 	"net"
 
 	"github.com/g0ldencybersec/Caduceus/pkg/types"
@@ -52,6 +54,7 @@ func (w *worker) run() {
 			Organization: utils.GetOrganization(org),
 			CommonName:   names[0],
 			SAN:          utils.JoinNonEmpty(", ", names[1:]),
+			Domains:      names,
 		}
 
 		w.results <- types.Result{IP: ip, Hit: true, Certificate: &certInfo, Timeout: false}
@@ -79,4 +82,75 @@ func (wp *WorkerPool) Start() {
 
 func (wp *WorkerPool) Stop() {
 	close(wp.input)
+}
+
+// Result Workers
+type ResultWorker struct {
+	resultInput   <-chan types.Result
+	outputChannel chan<- string
+}
+
+type ResultWorkerPool struct {
+	workers       []*ResultWorker
+	resultInput   chan types.Result
+	outputChannel chan string
+}
+
+func NewResultWorker(resultInput <-chan types.Result, outputChannel chan<- string) *ResultWorker {
+	return &ResultWorker{
+		resultInput:   resultInput,
+		outputChannel: outputChannel,
+	}
+}
+
+func (rw *ResultWorker) Run(args types.ScrapeArgs) {
+	for result := range rw.resultInput {
+		if result.Hit {
+			if args.JsonOutput {
+				outputJSON, _ := json.Marshal(result.Certificate)
+				rw.outputChannel <- string(outputJSON)
+			} else {
+				for _, domain := range result.Certificate.Domains {
+					if args.PrintWildcards {
+						if utils.IsWilcard(domain) || utils.IsValidDomain(domain) {
+							rw.outputChannel <- domain
+							continue
+						}
+					}
+					if utils.IsValidDomain(domain) && !utils.IsWilcard(domain) {
+						rw.outputChannel <- domain
+					}
+				}
+			}
+		} else if args.Debug {
+			if result.Timeout {
+				rw.outputChannel <- fmt.Sprintf("Timed Out. No SSL certificate found for %s", result.IP)
+			}
+			if result.Error != nil {
+				rw.outputChannel <- fmt.Sprintf("Failed to get SSL certificate from %s: %v", result.IP, result.Error)
+			}
+		}
+	}
+}
+
+func NewResultWorkerPool(size int, resultInput chan types.Result, outputChannel chan string) *ResultWorkerPool {
+	rwp := &ResultWorkerPool{
+		workers:       make([]*ResultWorker, size),
+		resultInput:   resultInput,
+		outputChannel: outputChannel,
+	}
+	for i := range rwp.workers {
+		rwp.workers[i] = NewResultWorker(rwp.resultInput, rwp.outputChannel)
+	}
+	return rwp
+}
+
+func (rwp *ResultWorkerPool) Start(args types.ScrapeArgs) {
+	for _, worker := range rwp.workers {
+		go worker.Run(args)
+	}
+}
+
+func (rwp *ResultWorkerPool) Stop() {
+	close(rwp.resultInput)
 }
