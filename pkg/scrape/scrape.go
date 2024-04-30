@@ -18,14 +18,14 @@ func RunScrape(args types.ScrapeArgs) {
 
 	inputChannel := make(chan string)
 	resultChannel := make(chan types.Result)
-	outputChannel := make(chan string, 1000)
+	outputChannel := make(chan string, args.Concurrency/10)
 
 	// Create and start the worker pool
 	workerPool := workers.NewWorkerPool(args.Concurrency, dialer, inputChannel, resultChannel)
 	workerPool.Start()
 
 	// Create and start the results worker pool
-	resultsWorkerPool := workers.NewResultWorkerPool(50, resultChannel, outputChannel) // Adjust the size as needed
+	resultsWorkerPool := workers.NewResultWorkerPool(args.Concurrency/100, resultChannel, outputChannel) // Adjust the size as needed
 	resultsWorkerPool.Start(args)
 
 	// Handle input feeding

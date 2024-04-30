@@ -26,6 +26,11 @@ func main() {
 
 	flag.Parse()
 
+	//need at least 100
+	if args.Concurrency < 100 {
+		args.Concurrency = 100
+	}
+
 	if args.Help {
 		fmt.Println(scrapeUsage)
 		flag.PrintDefaults()
