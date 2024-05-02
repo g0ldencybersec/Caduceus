@@ -14,7 +14,7 @@ sudo apt install gcc
 ```
 
 ```sh
-go install github.com/g0ldencybersec/Caduceus@latest
+go install github.com/g0ldencybersec/Caduceus/cmd/caduceus@latest
 ```
 
 Note:

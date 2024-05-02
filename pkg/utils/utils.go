@@ -52,10 +52,10 @@ func inc(ip net.IP) {
 	}
 }
 
-func ExtractNames(cert *x509.Certificate) []string {
-	names := append([]string{cert.Subject.CommonName}, cert.DNSNames...)
-	return names
-}
+// func ExtractNames(cert *x509.Certificate) []string {
+// 	names := append([]string{cert.Subject.CommonName}, cert.DNSNames...)
+// 	return names
+// }
 
 func IntakeFunction(chanInput chan string, ports []string, input string) {
 	if _, err := os.Stat(input); err == nil {
@@ -103,26 +103,6 @@ func processInput(argItem string, chanInput chan string, ports []string) {
 			chanInput <- argItem + ":" + port
 		}
 	}
-}
-
-func GetOrganization(org []string) string {
-	if len(org) > 0 {
-		return org[0]
-	}
-	return "NONE"
-}
-
-func JoinNonEmpty(sep string, elements []string) string {
-	var result string
-	for _, element := range elements {
-		if element != "" {
-			if result != "" {
-				result += sep
-			}
-			result += element
-		}
-	}
-	return result
 }
 
 func IsValidDomain(domain string) bool {

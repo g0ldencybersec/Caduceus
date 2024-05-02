@@ -48,15 +48,15 @@ func (w *Worker) run() {
 			continue
 		}
 
-		names := utils.ExtractNames(cert)
-		org := cert.Subject.Organization
-
 		certInfo := types.CertificateInfo{
-			IP:           ip,
-			Organization: utils.GetOrganization(org),
-			CommonName:   names[0],
-			SAN:          utils.JoinNonEmpty(", ", names[1:]),
-			Domains:      names,
+			OriginIP:         ip,
+			Organization:     cert.Subject.Organization,
+			OrganizationUnit: cert.Subject.OrganizationalUnit,
+			CommonName:       cert.Subject.CommonName,
+			SAN:              cert.DNSNames,
+			Domains:          append([]string{cert.Subject.CommonName}, cert.DNSNames...),
+			Emails:           cert.EmailAddresses,
+			IPAddrs:          cert.IPAddresses,
 		}
 
 		w.results <- types.Result{IP: ip, Hit: true, Certificate: &certInfo, Timeout: false}

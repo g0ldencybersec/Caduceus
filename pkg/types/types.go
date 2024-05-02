@@ -1,5 +1,7 @@
 package types
 
+import "net"
+
 // Scraper Arg types
 type ScrapeArgs struct {
 	Concurrency    int
@@ -16,11 +18,14 @@ type ScrapeArgs struct {
 
 // Result Types
 type CertificateInfo struct {
-	IP           string   `json:"ip"`
-	Organization string   `json:"organization"`
-	CommonName   string   `json:"commonName"`
-	SAN          string   `json:"san"`
-	Domains      []string `json:"domains"`
+	OriginIP         string   `json:"originip"`
+	Organization     []string `json:"org"`
+	OrganizationUnit []string `json:"orgunit"`
+	CommonName       string   `json:"commonName"`
+	SAN              []string `json:"san"`
+	Domains          []string `json:"domains"`
+	Emails           []string `json:"emails"`
+	IPAddrs          []net.IP `json:"ips"`
 }
 
 type Result struct {
