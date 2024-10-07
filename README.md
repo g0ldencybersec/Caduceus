@@ -30,10 +30,11 @@ Don't forget to [set your `GOPATH`](https://github.com/golang/go/wiki/SettingGOP
   -h    Show the program usage message
   -i string
         Either IPs & CIDRs separated by commas, or a file with IPs/CIDRs on each line (default "NONE")
-  -o string
-        Output file to write results to (default "CaduceusResults.jsonl")
+  -j    print cert data as jsonl
   -p string
         TLS ports to check for certificates (default "443")
   -t int
         Timeout for TLS handshake (default 4)
+  -wc
+        print wildcards to stdout
 ```
