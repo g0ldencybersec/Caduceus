@@ -3,7 +3,7 @@ The Caduceus is a symbol of Hermes or Mercury in Greek and Roman mythology. Cadu
 
 Caduceus is a tool to scan IPs or CIDRs for certificates. This allows finding hidden domains, new organizations, etc.
 
-Input Support: Either IPs & CIDRs separated by commas, or a file with IPs/CIDRs on each line, or file contains ip:port format list. 
+Input Support: Either IPs & CIDRs separated by commas, or a file with IPs/CIDRs on each line, or file contains ip:port format list. Or stdin.
 
 Inspired by [CloudRecon](https://github.com/g0ldencybersec/CloudRecon)
 
@@ -30,7 +30,7 @@ Don't forget to [set your `GOPATH`](https://github.com/golang/go/wiki/SettingGOP
   -h    Show the program usage message
   -i string
         Either IPs & CIDRs separated by commas, or a file with IPs/CIDRs on each line (default "NONE")
-        TO USE STDIN SET THIS TO "-" (ex: cat ips.txt | Caduceus -i -)
+        TO USE STDIN, DONT USE THIS FLAG
   -j    print cert data as jsonl
   -p string
         TLS ports to check for certificates (default "443")

@@ -39,7 +39,7 @@ func main() {
 	}
 
 	// If the input is '-', read from stdin
-	if args.Input == "-" {
+	if args.Input == "NONE" {
 		var stdinIPs []string
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
@@ -57,12 +57,6 @@ func main() {
 
 		// Join all the IPs from stdin as a single comma-separated string
 		args.Input = strings.Join(stdinIPs, ",")
-	} else if args.Input == "NONE" {
-		// If no input is detected, print an error and show usage
-		fmt.Print("No input detected, please use the -i flag to add input!\n\n")
-		fmt.Println(scrapeUsage)
-		flag.PrintDefaults()
-		return
 	}
 
 	args.Ports = strings.Split(args.PortList, ",")
