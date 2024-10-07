@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -37,11 +38,31 @@ func main() {
 		return
 	}
 
-	if args.Input == "NONE" {
+	// If the input is '-', read from stdin
+	if args.Input == "-" {
+		var stdinIPs []string
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if line != "" {
+				stdinIPs = append(stdinIPs, line)
+			}
+		}
+
+		// Handle any potential scanning errors
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading from stdin: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Join all the IPs from stdin as a single comma-separated string
+		args.Input = strings.Join(stdinIPs, ",")
+	} else if args.Input == "NONE" {
+		// If no input is detected, print an error and show usage
 		fmt.Print("No input detected, please use the -i flag to add input!\n\n")
 		fmt.Println(scrapeUsage)
 		flag.PrintDefaults()
-		os.Exit(1)
+		return
 	}
 
 	args.Ports = strings.Split(args.PortList, ",")
