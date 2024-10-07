@@ -30,6 +30,7 @@ Don't forget to [set your `GOPATH`](https://github.com/golang/go/wiki/SettingGOP
   -h    Show the program usage message
   -i string
         Either IPs & CIDRs separated by commas, or a file with IPs/CIDRs on each line (default "NONE")
+        TO USE STDIN SET THIS TO "-" (ex: cat ips.txt | Caduceus -i -)
   -j    print cert data as jsonl
   -p string
         TLS ports to check for certificates (default "443")
