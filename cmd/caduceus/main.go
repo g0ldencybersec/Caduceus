@@ -28,7 +28,7 @@ func main() {
 	flag.Parse()
 
 	//need at least 100
-	if args.Concurrency < 100 {
+	if args.Concurrency < 1 {
 		args.Concurrency = 100
 	}
 

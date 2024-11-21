@@ -25,7 +25,7 @@ func RunScrape(args types.ScrapeArgs) {
 	workerPool.Start()
 
 	// Create and start the results worker pool
-	resultsWorkerPool := workers.NewResultWorkerPool(args.Concurrency/100, resultChannel, outputChannel) // Adjust the size as needed
+	resultsWorkerPool := workers.NewResultWorkerPool(max(1, args.Concurrency/10), resultChannel, outputChannel) // Adjust the size as needed
 	resultsWorkerPool.Start(args)
 
 	// Handle input feeding
